@@ -80,6 +80,11 @@ variable "app_db_username" {
   description = "Least-privilege PostgreSQL application account; bootstrapped separately from the RDS master account."
   type        = string
   default     = "portfolio_app"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z_][a-zA-Z0-9_]{0,62}$", var.app_db_username))
+    error_message = "app_db_username must be a valid PostgreSQL role name with at most 63 characters."
+  }
 }
 
 variable "alb_domain_name" {
@@ -120,12 +125,22 @@ variable "hosted_zone_id" {
   description = "Route 53 public hosted zone ID. Required for configured CloudFront or ALB aliases."
   type        = string
   default     = ""
+
+  validation {
+    condition     = (var.domain_name == "" && var.alb_domain_name == "") || var.hosted_zone_id != ""
+    error_message = "hosted_zone_id is required when domain_name or alb_domain_name is configured."
+  }
 }
 
 variable "cloudfront_certificate_arn" {
   description = "ACM certificate ARN in us-east-1 for domain_name. Required when domain_name is set."
   type        = string
   default     = ""
+
+  validation {
+    condition     = var.domain_name == "" || var.cloudfront_certificate_arn != ""
+    error_message = "cloudfront_certificate_arn is required when domain_name is configured."
+  }
 }
 
 variable "alarm_email" {
