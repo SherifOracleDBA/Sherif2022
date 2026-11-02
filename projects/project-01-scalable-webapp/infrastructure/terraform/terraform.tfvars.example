@@ -1,0 +1,23 @@
+aws_region       = "us-east-1"
+project_name     = "aws-portfolio-p01"
+environment      = "dev"
+vpc_cidr         = "10.20.0.0/16"
+instance_type    = "t3.micro"
+min_size         = 2
+desired_capacity = 2
+max_size         = 4
+
+# Set true to test RDS Multi-AZ failover. This increases AWS charges.
+db_multi_az = false
+
+# Generate a unique random value of at least 32 characters.
+# Do not use this example value in a real deployment.
+origin_verify_header = "replace-with-a-random-value-of-at-least-32-characters"
+
+# Optional custom domain. Leave all three empty to use the CloudFront hostname.
+domain_name                 = ""
+hosted_zone_id              = ""
+cloudfront_certificate_arn  = ""
+
+# Optional. SNS sends a confirmation email when configured.
+alarm_email = ""
