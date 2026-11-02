@@ -1,30 +1,44 @@
 # Project Delivery Status
 
-This file distinguishes the published learning guides from deployable implementations.
+Status is evidence-based: committed code is not treated as validated until the checks have passed, and deployment is not treated as verified until it has been run in an AWS account.
 
-| Project | Architecture guide | Infrastructure code | Application code | Automated tests | AWS deployment verified |
+| Project | Infrastructure code | Application code | Automated tests | CI validation | Live AWS deployment |
 |---|---|---|---|---|---|
-| 01 — Scalable web app | Complete | Pending | Pending | Pending | Not deployed |
-| 02 — Image processing | Complete | Pending | Pending | Pending | Not deployed |
-| 03 — Cognito REST API | Complete | Pending | Pending | Pending | Not deployed |
-| 04 — Hybrid connectivity | Complete | Pending | Pending | Pending | Not deployed |
-| 05 — Multi-region DR | Complete | Pending | Pending | Pending | Not deployed |
-| 06 — ECS microservices | Complete | Pending | Pending | Pending | Not deployed |
-| 07 — Serverless data lake | Complete | Pending | Pending | Pending | Not deployed |
+| 01 — Scalable web app | <strong>Starter committed</strong> | <strong>Demo app committed</strong> | <strong>Unit + smoke tests committed</strong> | Pending run/result | Not deployed |
+| 02 — Image processing | Pending | Pending | Pending | Pending | Not deployed |
+| 03 — Cognito REST API | Pending | Pending | Pending | Pending | Not deployed |
+| 04 — Hybrid connectivity | Pending | Pending | Pending | Pending | Not deployed |
+| 05 — Multi-region DR | Pending | Pending | Pending | Pending | Not deployed |
+| 06 — ECS microservices | Pending | Pending | Pending | Pending | Not deployed |
+| 07 — Serverless data lake | Pending | Pending | Pending | Pending | Not deployed |
 
-## Acceptance gates for each project
+## Project 01 scope now committed
 
-A project is not considered complete until all applicable gates pass:
+- Terraform starter: VPC, public/private subnets, IGW, NAT, security groups, ALB, launch template, ASG, CPU target tracking, private RDS PostgreSQL, WAF, CloudFront, optional Route 53 alias, CloudWatch dashboard/alarms, SNS.
+- Application: dependency-free Python web application with health, home, and cacheable static CSS routes.
+- Tests: Python unit tests and a deployed endpoint smoke test.
+- Automation: GitHub Actions workflow for Python tests and Terraform format/validation.
 
-1. **Code:** infrastructure and application source are committed; versions are pinned.
-2. **Static checks:** formatting, linting, security scanning, and unit tests pass.
-3. **Deployment:** a clean environment can be deployed by following the README.
-4. **Validation:** success cases, negative cases, and failure/recovery scenarios pass.
-5. **Evidence:** architecture, test outputs, screenshots/log excerpts with secrets removed, and known limitations are documented.
-6. **Teardown:** resources are removed and remaining billable resources are checked.
+## Project 01 limitations still to close
 
-## Suggested sequence
+- The workflow result has not yet been inspected, so Terraform validation and CI are not marked passed.
+- No AWS account deployment has been performed.
+- RDS is provisioned but the demo application is not yet connected to it with a least-privilege database user.
+- The initial CloudFront-to-ALB origin uses HTTP; enable origin TLS before production use.
+- The starter uses one NAT Gateway and defaults RDS Multi-AZ off to reduce learning-lab costs. Use one NAT per AZ and Multi-AZ database for the high-availability exercise.
 
-Build and validate one project end-to-end before starting the next. Project 01 provides the network, IAM, compute, load balancing, and monitoring foundation. Projects 02 and 03 then add serverless patterns. Project 04 is a separate network lab requiring an actual VPN peer for live tunnel testing. Project 05 builds on the web application. Projects 06 and 07 introduce containers and data engineering.
+## Completion gates
 
-**Important:** The current repository seed is a documentation milestone. No AWS infrastructure has been deployed by this repository initialization.
+1. Infrastructure code committed with pinned provider/tool versions.
+2. Application code committed.
+3. Unit, integration, and smoke tests pass.
+4. Terraform format/init/validate/plan pass.
+5. AWS deployment succeeds in a named test account.
+6. Functional, security, availability, and failure tests pass.
+7. Teardown is completed and remaining billable resources are reviewed.
+
+## Recommended implementation order
+
+Complete Project 01 end-to-end before moving to Projects 02–07. Use its repository conventions and CI workflow as the template for the remaining projects.
+
+**No production readiness, HA, security compliance, or DR claim is made until the corresponding tests and deployment evidence exist.**
