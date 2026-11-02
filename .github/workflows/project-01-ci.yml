@@ -30,7 +30,7 @@ jobs:
       - name: Run unit tests
         run: python -m unittest discover -s projects/project-01-scalable-webapp/tests -p "test_*.py" -v
         env:
-          PYTHONPATH: .
+          PYTHONPATH: projects/project-01-scalable-webapp/application
 
   terraform:
     name: Terraform format and validation
