@@ -15,13 +15,13 @@ Status is evidence-based: committed code is not treated as validated until check
 ## Latest Project 01 CI evidence
 
 - Workflow: [Project 01 CI](https://github.com/SherifOracleDBA/Sherif2022/actions/workflows/project-01-ci.yml)
-- Successful run: [Run #16 — 41435861425](https://github.com/SherifOracleDBA/Sherif2022/actions/runs/41435861425)
-- Python unit tests: passed.
-- Terraform format check: passed.
-- Terraform init with no backend: passed.
-- Terraform validate: passed.
+- Latest successful run: [Run #17 — 41436773150](https://github.com/SherifOracleDBA/Sherif2022/actions/runs/41436773150) (manual workflow dispatch).
+- Commit checked: `a1cd20cb8f01b29bc3a53977db5812f932ac373e` on `main`.
+- Python unit tests job: passed.
+- Terraform format and validation job: passed, including format check, init with no backend, and validate.
+- The preceding push-triggered run #16 also passed on its commit.
 
-Earlier runs on earlier commits remain visible as failed historical records. The successful run above validates the current CI workflow and the commit it checked.
+Earlier runs on earlier commits remain visible as failed historical records. Those failures do not indicate that the current workflow is failing; the latest run above confirms both jobs passed.
 
 ## Project 01 scope committed
 
