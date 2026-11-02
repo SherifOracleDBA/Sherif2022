@@ -376,7 +376,7 @@ resource "aws_autoscaling_group" "app" {
   desired_capacity          = var.desired_capacity
   max_size                  = var.max_size
   vpc_zone_identifier       = values(aws_subnet.app_private)[*].id
-  target_group_arns          = [aws_lb_target_group.app.arn]
+  target_group_arns         = [aws_lb_target_group.app.arn]
   health_check_type         = "ELB"
   health_check_grace_period = 180
 
@@ -605,8 +605,8 @@ resource "aws_cloudfront_distribution" "app" {
   viewer_certificate {
     cloudfront_default_certificate = var.domain_name == ""
     acm_certificate_arn            = var.domain_name == "" ? null : var.cloudfront_certificate_arn
-    ssl_support_method              = var.domain_name == "" ? null : "sni-only"
-    minimum_protocol_version        = var.domain_name == "" ? null : "TLSv1.2_2021"
+    ssl_support_method             = var.domain_name == "" ? null : "sni-only"
+    minimum_protocol_version       = var.domain_name == "" ? null : "TLSv1.2_2021"
   }
 
   depends_on = [aws_wafv2_web_acl_association.alb]
