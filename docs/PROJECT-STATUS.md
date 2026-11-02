@@ -1,10 +1,10 @@
 # Project Delivery Status
 
-Status is evidence-based: committed code is not treated as validated until the checks have passed, and deployment is not treated as verified until it has been run in an AWS account.
+Status is evidence-based: committed code is not treated as validated until checks pass, and deployment is not verified until it has been run in an AWS account.
 
-| Project | Infrastructure code | Application code | Automated tests | CI validation | Live AWS deployment |
+| Project | Infrastructure code | Application code | Automated tests | CI / Terraform validation | Live AWS deployment |
 |---|---|---|---|---|---|
-| 01 — Scalable web app | <strong>Starter committed</strong> | <strong>Demo app committed</strong> | <strong>Unit + smoke tests committed</strong> | Pending run/result | Not deployed |
+| 01 — Scalable web app | Starter committed | Demo app committed | 4 unit tests pass locally; smoke test committed | Pending | Not deployed |
 | 02 — Image processing | Pending | Pending | Pending | Pending | Not deployed |
 | 03 — Cognito REST API | Pending | Pending | Pending | Pending | Not deployed |
 | 04 — Hybrid connectivity | Pending | Pending | Pending | Pending | Not deployed |
@@ -12,20 +12,22 @@ Status is evidence-based: committed code is not treated as validated until the c
 | 06 — ECS microservices | Pending | Pending | Pending | Pending | Not deployed |
 | 07 — Serverless data lake | Pending | Pending | Pending | Pending | Not deployed |
 
-## Project 01 scope now committed
+## Project 01 scope committed
 
-- Terraform starter: VPC, public/private subnets, IGW, NAT, security groups, ALB, launch template, ASG, CPU target tracking, private RDS PostgreSQL, WAF, CloudFront, optional Route 53 alias, CloudWatch dashboard/alarms, SNS.
-- Application: dependency-free Python web application with health, home, and cacheable static CSS routes.
-- Tests: Python unit tests and a deployed endpoint smoke test.
-- Automation: GitHub Actions workflow for Python tests and Terraform format/validation.
+- Terraform starter: VPC, public/private subnets, Internet Gateway, NAT Gateway, security groups, ALB, launch template, ASG, CPU target tracking, private RDS PostgreSQL, WAF, CloudFront, optional Route 53 alias, CloudWatch dashboard/alarms, and SNS.
+- Application: dependency-free Python web app with health, home, and cacheable static CSS routes.
+- Tests: four Python unit tests and a deployed endpoint smoke test.
+- Automation: GitHub Actions workflow for Python tests and Terraform formatting/validation.
 
-## Project 01 limitations still to close
+## Project 01 validation still required
 
-- The workflow result has not yet been inspected, so Terraform validation and CI are not marked passed.
-- No AWS account deployment has been performed.
-- RDS is provisioned but the demo application is not yet connected to it with a least-privilege database user.
-- The initial CloudFront-to-ALB origin uses HTTP; enable origin TLS before production use.
-- The starter uses one NAT Gateway and defaults RDS Multi-AZ off to reduce learning-lab costs. Use one NAT per AZ and Multi-AZ database for the high-availability exercise.
+- Python unit tests: **4/4 passed locally**.
+- GitHub Actions workflow: committed; a successful run has not yet been confirmed.
+- Terraform fmt/init/validate/plan: not yet run in this environment.
+- AWS deployment: not performed.
+- RDS is provisioned, but the demo web app is not yet connected using a dedicated least-privilege DB user.
+- CloudFront-to-ALB origin traffic currently uses HTTP. Enable origin TLS before production use.
+- The starter uses one NAT Gateway and defaults RDS Multi-AZ off to reduce lab costs. Use one NAT per AZ and enable Multi-AZ for the high-availability exercise.
 
 ## Completion gates
 
@@ -39,6 +41,6 @@ Status is evidence-based: committed code is not treated as validated until the c
 
 ## Recommended implementation order
 
-Complete Project 01 end-to-end before moving to Projects 02–07. Use its repository conventions and CI workflow as the template for the remaining projects.
+Complete Project 01 end-to-end before moving to Projects 02–07. Reuse its folder layout, test approach, and CI workflow for subsequent projects.
 
 **No production readiness, HA, security compliance, or DR claim is made until the corresponding tests and deployment evidence exist.**
