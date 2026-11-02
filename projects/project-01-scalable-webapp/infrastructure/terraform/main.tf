@@ -371,12 +371,12 @@ resource "aws_launch_template" "app" {
 }
 
 resource "aws_autoscaling_group" "app" {
-  name                = "${local.name}-asg"
-  min_size            = var.min_size
-  desired_capacity    = var.desired_capacity
-  max_size            = var.max_size
-  vpc_zone_identifier = values(aws_subnet.app_private)[*].id
-  target_group_arns   = [aws_lb_target_group.app.arn]
+  name                      = "${local.name}-asg"
+  min_size                  = var.min_size
+  desired_capacity          = var.desired_capacity
+  max_size                  = var.max_size
+  vpc_zone_identifier       = values(aws_subnet.app_private)[*].id
+  target_group_arns          = [aws_lb_target_group.app.arn]
   health_check_type         = "ELB"
   health_check_grace_period = 180
 
@@ -579,8 +579,8 @@ resource "aws_cloudfront_distribution" "app" {
   default_cache_behavior {
     target_origin_id         = "alb-${local.name}"
     viewer_protocol_policy   = "redirect-to-https"
-    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods         = ["GET", "HEAD"]
+    allowed_methods          = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods           = ["GET", "HEAD"]
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
     origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
     compress                 = true
@@ -604,7 +604,7 @@ resource "aws_cloudfront_distribution" "app" {
 
   viewer_certificate {
     cloudfront_default_certificate = var.domain_name == ""
-    acm_certificate_arn             = var.domain_name == "" ? null : var.cloudfront_certificate_arn
+    acm_certificate_arn            = var.domain_name == "" ? null : var.cloudfront_certificate_arn
     ssl_support_method              = var.domain_name == "" ? null : "sni-only"
     minimum_protocol_version        = var.domain_name == "" ? null : "TLSv1.2_2021"
   }
