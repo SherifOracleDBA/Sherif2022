@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from application.web.app import route_response
+from web.app import route_response
 
 
 class RouteResponseTests(unittest.TestCase):
