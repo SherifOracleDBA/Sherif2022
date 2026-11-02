@@ -377,7 +377,7 @@ resource "aws_autoscaling_group" "app" {
   max_size            = var.max_size
   vpc_zone_identifier = values(aws_subnet.app_private)[*].id
   target_group_arns   = [aws_lb_target_group.app.arn]
-  health_check_type   = "ELB"
+  health_check_type         = "ELB"
   health_check_grace_period = 180
 
   launch_template {
@@ -495,8 +495,9 @@ resource "aws_wafv2_web_acl" "alb" {
     name     = "AWSManagedCommonRuleSet"
     priority = 1
 
+    # Begin in count mode; review sampled requests before switching to none {}.
     override_action {
-      none {}
+      count {}
     }
 
     statement {
@@ -576,13 +577,13 @@ resource "aws_cloudfront_distribution" "app" {
   }
 
   default_cache_behavior {
-    target_origin_id       = "alb-${local.name}"
-    viewer_protocol_policy = "redirect-to-https"
+    target_origin_id         = "alb-${local.name}"
+    viewer_protocol_policy   = "redirect-to-https"
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
-    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
     origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
-    compress               = true
+    compress                 = true
   }
 
   ordered_cache_behavior {
