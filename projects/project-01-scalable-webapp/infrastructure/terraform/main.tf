@@ -41,6 +41,10 @@ locals {
   db_subnets = {
     for index, az in local.azs : az => cidrsubnet(var.vpc_cidr, 8, index + 20)
   }
+
+  nat_subnets = var.nat_gateway_per_az ? local.public_subnets : {
+    (local.azs[0]) = local.public_subnets[local.azs[0]]
+  }
 }
 
 resource "aws_vpc" "main" {
@@ -124,21 +128,23 @@ resource "aws_route_table_association" "public" {
 }
 
 resource "aws_eip" "nat" {
-  domain = "vpc"
+  for_each = local.nat_subnets
+  domain   = "vpc"
 
   tags = {
-    Name = "${local.name}-nat-eip"
+    Name = "${local.name}-nat-eip-${each.key}"
   }
 }
 
 resource "aws_nat_gateway" "main" {
-  allocation_id = aws_eip.nat.id
-  subnet_id     = values(aws_subnet.public)[0].id
+  for_each      = local.nat_subnets
+  allocation_id = aws_eip.nat[each.key].id
+  subnet_id     = aws_subnet.public[each.key].id
 
   depends_on = [aws_internet_gateway.main]
 
   tags = {
-    Name = "${local.name}-nat"
+    Name = "${local.name}-nat-${each.key}"
   }
 }
 
@@ -149,7 +155,7 @@ resource "aws_route_table" "app_private" {
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main.id
+    nat_gateway_id = aws_nat_gateway.main[var.nat_gateway_per_az ? each.key : local.azs[0]].id
   }
 
   tags = {
@@ -181,6 +187,159 @@ resource "aws_route_table_association" "db_private" {
   route_table_id = aws_route_table.db_private[each.key].id
 }
 
+
+resource "aws_network_acl" "public" {
+  vpc_id     = aws_vpc.main.id
+  subnet_ids = values(aws_subnet.public)[*].id
+
+  ingress {
+    rule_no    = 100
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 80
+    to_port    = 80
+  }
+
+  ingress {
+    rule_no    = 110
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 443
+    to_port    = 443
+  }
+
+  ingress {
+    rule_no    = 120
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 1024
+    to_port    = 65535
+  }
+
+  egress {
+    rule_no    = 100
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 8080
+    to_port    = 8080
+  }
+
+  egress {
+    rule_no    = 110
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 1024
+    to_port    = 65535
+  }
+
+  tags = {
+    Name = "${local.name}-public-nacl"
+    Tier = "public"
+  }
+}
+
+resource "aws_network_acl" "app_private" {
+  vpc_id     = aws_vpc.main.id
+  subnet_ids = values(aws_subnet.app_private)[*].id
+
+  ingress {
+    rule_no    = 100
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 8080
+    to_port    = 8080
+  }
+
+  ingress {
+    rule_no    = 110
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 1024
+    to_port    = 65535
+  }
+
+  egress {
+    rule_no    = 100
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 5432
+    to_port    = 5432
+  }
+
+  egress {
+    rule_no    = 110
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 80
+    to_port    = 80
+  }
+
+  egress {
+    rule_no    = 120
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 443
+    to_port    = 443
+  }
+
+  egress {
+    rule_no    = 130
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 1024
+    to_port    = 65535
+  }
+
+  tags = {
+    Name = "${local.name}-app-private-nacl"
+    Tier = "application"
+  }
+}
+
+resource "aws_network_acl" "db_private" {
+  vpc_id     = aws_vpc.main.id
+  subnet_ids = values(aws_subnet.db_private)[*].id
+
+  dynamic "ingress" {
+    for_each = { for index, cidr in values(local.app_subnets) : tostring(index + 100) => cidr }
+    content {
+      rule_no    = tonumber(ingress.key)
+      protocol   = "tcp"
+      action     = "allow"
+      cidr_block = ingress.value
+      from_port  = 5432
+      to_port    = 5432
+    }
+  }
+
+  dynamic "egress" {
+    for_each = { for index, cidr in values(local.app_subnets) : tostring(index + 100) => cidr }
+    content {
+      rule_no    = tonumber(egress.key)
+      protocol   = "tcp"
+      action     = "allow"
+      cidr_block = egress.value
+      from_port  = 1024
+      to_port    = 65535
+    }
+  }
+
+  tags = {
+    Name = "${local.name}-db-private-nacl"
+    Tier = "database"
+  }
+}
 resource "aws_security_group" "alb" {
   name        = "${local.name}-alb-sg"
   description = "Allow only CloudFront origin-facing traffic to the ALB."
@@ -190,6 +349,22 @@ resource "aws_security_group" "alb" {
     description     = "HTTP from CloudFront origin-facing managed prefix list"
     from_port       = 80
     to_port         = 80
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront_origin_facing.id]
+  }
+
+  ingress {
+    description = "Public HTTP for Route 53 health checks; WAF limits unauthenticated access to /health"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description     = "HTTPS from CloudFront origin-facing managed prefix list"
+    from_port       = 443
+    to_port         = 443
     protocol        = "tcp"
     prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront_origin_facing.id]
   }
@@ -323,6 +498,20 @@ resource "aws_lb_listener" "http" {
   }
 }
 
+resource "aws_lb_listener" "https" {
+  count             = var.alb_certificate_arn == "" ? 0 : 1
+  load_balancer_arn = aws_lb.app.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.alb_certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+}
+
 resource "aws_launch_template" "app" {
   name_prefix   = "${local.name}-"
   image_id      = data.aws_ami.al2023.id
@@ -352,7 +541,10 @@ resource "aws_launch_template" "app" {
   }
 
   user_data = base64encode(templatefile("${path.module}/user_data.sh.tftpl", {
-    app_code_base64 = base64encode(file("${path.module}/../../application/web/app.py"))
+    app_code_base64     = base64encode(file("${path.module}/../../application/web/app.py"))
+    requirements_base64 = base64encode(file("${path.module}/../../application/requirements.txt"))
+    db_secret_arn       = aws_secretsmanager_secret.app_db.arn
+    aws_region          = var.aws_region
   }))
 
   update_default_version = true
@@ -410,6 +602,38 @@ resource "aws_autoscaling_policy" "cpu_target_tracking" {
   }
 }
 
+
+resource "aws_autoscaling_policy" "cpu_step_scale_out" {
+  name                   = "${local.name}-cpu-step-scale-out"
+  policy_type            = "StepScaling"
+  autoscaling_group_name = aws_autoscaling_group.app.name
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 180
+
+  step_adjustment {
+    metric_interval_lower_bound = 0
+    scaling_adjustment           = 1
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "cpu_step_scale_out" {
+  alarm_name          = "${local.name}-cpu-step-scale-out"
+  alarm_description   = "Add one EC2 instance when average ASG CPU remains at or above 75 percent."
+  namespace           = "AWS/EC2"
+  metric_name         = "CPUUtilization"
+  statistic           = "Average"
+  period              = 60
+  evaluation_periods  = 2
+  threshold           = 75
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.app.name
+  }
+
+  alarm_actions = [aws_autoscaling_policy.cpu_step_scale_out.arn]
+}
 resource "aws_db_subnet_group" "main" {
   name       = "${local.name}-db-subnets"
   subnet_ids = values(aws_subnet.db_private)[*].id
@@ -445,6 +669,41 @@ resource "aws_db_instance" "main" {
   }
 }
 
+
+resource "random_password" "app_db" {
+  length  = 32
+  special = false
+}
+
+resource "aws_secretsmanager_secret" "app_db" {
+  name        = "${local.name}/database/application"
+  description = "Least-privilege PostgreSQL application credentials for ${local.name}."
+}
+
+resource "aws_secretsmanager_secret_version" "app_db" {
+  secret_id = aws_secretsmanager_secret.app_db.id
+  secret_string = jsonencode({
+    username = var.app_db_username
+    password = random_password.app_db.result
+    host     = aws_db_instance.main.address
+    port     = aws_db_instance.main.port
+    dbname   = var.db_name
+  })
+}
+
+data "aws_iam_policy_document" "app_db_secret" {
+  statement {
+    sid       = "ReadApplicationDatabaseSecret"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.app_db.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "app_db_secret" {
+  name   = "${local.name}-read-app-db-secret"
+  role   = aws_iam_role.ec2.id
+  policy = data.aws_iam_policy_document.app_db_secret.json
+}
 resource "aws_wafv2_web_acl" "alb" {
   name        = "${local.name}-web-acl"
   description = "Protect the ALB origin; accept requests only from the configured CloudFront origin header."
@@ -463,21 +722,45 @@ resource "aws_wafv2_web_acl" "alb" {
     }
 
     statement {
-      not_statement {
+      and_statement {
         statement {
-          byte_match_statement {
-            search_string         = var.origin_verify_header
-            positional_constraint = "EXACTLY"
+          not_statement {
+            statement {
+              byte_match_statement {
+                search_string         = var.origin_verify_header
+                positional_constraint = "EXACTLY"
 
-            field_to_match {
-              single_header {
-                name = "x-origin-verify"
+                field_to_match {
+                  single_header {
+                    name = "x-origin-verify"
+                  }
+                }
+
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
               }
             }
+          }
+        }
 
-            text_transformation {
-              priority = 0
-              type     = "NONE"
+        statement {
+          not_statement {
+            statement {
+              byte_match_statement {
+                search_string         = "/health"
+                positional_constraint = "EXACTLY"
+
+                field_to_match {
+                  uri_path {}
+                }
+
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
+              }
             }
           }
         }
@@ -495,9 +778,9 @@ resource "aws_wafv2_web_acl" "alb" {
     name     = "AWSManagedCommonRuleSet"
     priority = 1
 
-    # Begin in count mode; review sampled requests before switching to none {}.
+    # Enforce managed common protections for this assessment deployment.
     override_action {
-      count {}
+      none {}
     }
 
     statement {
@@ -560,7 +843,7 @@ resource "aws_cloudfront_distribution" "app" {
   price_class     = "PriceClass_100"
 
   origin {
-    domain_name = aws_lb.app.dns_name
+    domain_name = var.alb_domain_name != "" ? var.alb_domain_name : aws_lb.app.dns_name
     origin_id   = "alb-${local.name}"
 
     custom_header {
@@ -571,7 +854,7 @@ resource "aws_cloudfront_distribution" "app" {
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "http-only"
+      origin_protocol_policy = var.alb_certificate_arn == "" ? "http-only" : "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
@@ -626,6 +909,34 @@ resource "aws_route53_record" "cloudfront" {
     name                   = aws_cloudfront_distribution.app.domain_name
     zone_id                = "Z2FDTNDATAQYW2"
     evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_health_check" "alb" {
+  fqdn              = aws_lb.app.dns_name
+  port              = 80
+  type              = "HTTP"
+  resource_path     = "/health"
+  failure_threshold = 3
+  request_interval  = 30
+  measure_latency   = true
+
+  tags = {
+    Name = "${local.name}-alb-health-check"
+  }
+}
+
+resource "aws_route53_record" "alb" {
+  count           = var.alb_domain_name == "" ? 0 : 1
+  zone_id         = var.hosted_zone_id
+  name            = var.alb_domain_name
+  type            = "A"
+  health_check_id = aws_route53_health_check.alb.id
+
+  alias {
+    name                   = aws_lb.app.dns_name
+    zone_id                = aws_lb.app.zone_id
+    evaluate_target_health = true
   }
 }
 
