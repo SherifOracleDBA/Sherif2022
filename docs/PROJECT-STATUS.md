@@ -1,10 +1,10 @@
 # Project Delivery Status
 
-Status is evidence-based: committed code is not treated as validated until checks pass, and deployment is not verified until it has been run in an AWS account.
+Status is evidence-based: infrastructure code and automated tests are marked complete only when committed and CI-verified. Live deployment, high availability, security, and failover are not considered verified until evidence is collected from an AWS account.
 
 | Project | Infrastructure code | Application code | Automated tests | CI / Terraform validation | Live AWS deployment |
 |---|---|---|---|---|---|
-| 01 — Scalable web app | Starter committed | Demo app committed | 4/4 unit tests passed in GitHub Actions | **Passed** | Not deployed |
+| 01 — Scalable web app | Assessment-focused Terraform committed | Python app with PostgreSQL integration code committed | 8/8 unit tests passed; deployed DB smoke tests prepared | **Passed** | Not deployed |
 | 02 — Image processing | Pending | Pending | Pending | Pending | Not deployed |
 | 03 — Cognito REST API | Pending | Pending | Pending | Pending | Not deployed |
 | 04 — Hybrid connectivity | Pending | Pending | Pending | Pending | Not deployed |
@@ -15,41 +15,54 @@ Status is evidence-based: committed code is not treated as validated until check
 ## Latest Project 01 CI evidence
 
 - Workflow: [Project 01 CI](https://github.com/SherifOracleDBA/Sherif2022/actions/workflows/project-01-ci.yml)
-- Latest successful run: [Run #17 — 41436773150](https://github.com/SherifOracleDBA/Sherif2022/actions/runs/41436773150) (manual workflow dispatch).
-- Commit checked: `a1cd20cb8f01b29bc3a53977db5812f932ac373e` on `main`.
-- Python unit tests job: passed.
-- Terraform format and validation job: passed, including format check, init with no backend, and validate.
-- The preceding push-triggered run #16 also passed on its commit.
+- Latest successful run: [Run #36 — 41492830520](https://github.com/SherifOracleDBA/Sherif2022/actions/runs/41492830520).
+- Commit checked: `05ea345fe51a5ea5e510fabd2f356baf5da3c189` on `main`.
+- Python unit tests: passed (8 tests).
+- Terraform format check: passed.
+- Terraform init with no backend: passed.
+- Terraform validate: passed.
+- CI installs the application runtime dependencies before running tests.
+- The workflow keeps `terraform fmt -check -recursive` non-mutating.
 
-Earlier runs on earlier commits remain visible as failed historical records. Those failures do not indicate that the current workflow is failing; the latest run above confirms both jobs passed.
+Earlier failed workflow runs are historical records from intermediate commits. They do not represent the current branch's result; Run #36 validates the current `main` commit.
 
-## Project 01 scope committed
+## Project 01 assessment implementation committed
 
-- Terraform starter: VPC, public/private subnets, Internet Gateway, NAT Gateway, security groups, ALB, launch template, ASG, CPU target tracking, private RDS PostgreSQL, WAF, CloudFront, optional Route 53 alias, CloudWatch dashboard/alarms, and SNS.
-- Application: dependency-free Python web app with health, home, and cacheable static CSS routes.
-- Tests: four Python unit tests and a deployed endpoint smoke test.
-- Automation: GitHub Actions workflow for Python tests and Terraform formatting/validation.
+- VPC with public, private application, and private database subnets across two AZs.
+- Dedicated public, application, and database Network ACLs, in addition to Security Groups.
+- One NAT Gateway per AZ by default, with a cost-saving single-NAT option.
+- ALB, health-checked target group, EC2 Launch Template, and private Auto Scaling group.
+- CPU target tracking plus a CloudWatch-alarm-driven step scale-out policy.
+- RDS PostgreSQL with Multi-AZ enabled by default and a Secrets Manager-managed master password.
+- Separate random application DB credential stored in Secrets Manager. The EC2 role can read only the application secret, not the master secret.
+- Python routes for application health, database health, and a sample database write.
+- One-time PostgreSQL application-role/table bootstrap script using an SSM port-forward; the application never uses the RDS master account.
+- AWS WAF origin-header protection, managed common rules in blocking mode, and rate limiting. Only `/health` is exempted from the CloudFront origin-header requirement for Route 53 health checks.
+- CloudFront distribution with HTTPS viewer access and static-asset caching. HTTPS from CloudFront to the ALB is enabled when a matching regional ALB certificate is supplied.
+- Route 53 ALB HTTP health check is created by default. The ALB A-alias record is conditional on a user-owned public hosted zone and `alb_domain_name`.
+- CloudWatch dashboard, alarms, SNS notifications, README architecture diagram, deployment steps, test plan, and cleanup instructions.
 
-## Project 01 limitations still to close
+## Remaining Project 01 acceptance gates
 
-- AWS deployment has not been performed.
-- The RDS instance is provisioned, but the demo web app is not yet connected using a dedicated least-privilege database user.
-- CloudFront-to-ALB origin traffic currently uses HTTP. Enable origin TLS before production use.
-- The starter uses one NAT Gateway and defaults RDS Multi-AZ off to reduce lab costs. Use one NAT per AZ and enable Multi-AZ for the high-availability exercise.
-- The deployed endpoint smoke test, scale-out, instance replacement, WAF behavior, SSM access, and teardown still need live AWS evidence.
+The following are not honestly markable as complete until deployment and evidence exist:
 
-## Completion gates
+1. Deploy the stack into the user's AWS account and review the real Terraform plan/cost before applying.
+2. Run the SSM database bootstrap once; then pass `/database` and `POST /visits` smoke tests.
+3. Verify two healthy targets in separate AZs, private EC2 placement, and Session Manager access.
+4. Demonstrate target tracking, step scale-out, and ASG instance replacement under controlled load.
+5. Verify the Route 53 health check reports healthy. Configure `alb_domain_name` and `hosted_zone_id` to create the assessment's ALB alias; these require an owned public hosted zone.
+6. Verify RDS Multi-AZ configuration and perform a planned failover test during an approved window.
+7. Review WAF sampled requests, verify blocking, confirm SNS delivery, CloudFront caching, and any optional ALB origin TLS certificate configuration.
+8. Destroy the stack after evidence capture and verify no unintended billable resources remain.
 
-1. Infrastructure code committed with pinned provider/tool versions.
-2. Application code committed.
-3. Unit, integration, and smoke tests pass.
-4. Terraform format/init/validate/plan pass.
-5. AWS deployment succeeds in a named test account.
-6. Functional, security, availability, and failure tests pass.
-7. Teardown is completed and remaining billable resources are reviewed.
+## Cost and security notes
+
+- The assessment defaults create two NAT Gateways and a Multi-AZ RDS instance. These incur higher charges than a single-NAT/single-AZ lab.
+- Terraform state contains sensitive generated database credential material. Do not commit state or plan files. Use encrypted, access-controlled remote state for shared or long-running environments.
+- The sample application DB password is generated by Terraform and stored in Secrets Manager. Do not grant the application role access to the RDS master secret.
+- CloudFront viewer HTTPS is enabled by default. CloudFront-to-ALB origin TLS requires an issued ACM certificate in the ALB Region and a matching `alb_domain_name`.
+- No production-readiness, high-availability, security-compliance, or DR claim is made before the corresponding AWS tests pass.
 
 ## Recommended implementation order
 
-Complete Project 01 end-to-end before moving to Projects 02–07. Reuse its repository layout, test approach, and CI workflow for subsequent projects.
-
-**No production readiness, HA, security compliance, or DR claim is made until the corresponding tests and deployment evidence exist.**
+Follow the requested build sequence exactly: Project 01, Projects 02 and 03, Project 04, Project 05, Project 06, then Project 07. Complete Project 01's live acceptance gates before beginning Project 02.
