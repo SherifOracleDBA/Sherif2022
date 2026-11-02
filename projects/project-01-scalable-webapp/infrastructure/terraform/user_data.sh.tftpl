@@ -1,0 +1,38 @@
+#!/bin/bash
+set -euo pipefail
+
+dnf install -y python3
+install -d -m 0755 /opt/portfolio
+
+cat > /opt/portfolio/app.py <<'PYTHON_APP_BASE64'
+${app_code_base64}
+PYTHON_APP_BASE64
+
+base64 -d /opt/portfolio/app.py.tmp 2>/dev/null || true
+printf '%s' "${app_code_base64}" | base64 -d > /opt/portfolio/app.py
+chmod 0644 /opt/portfolio/app.py
+
+cat > /etc/systemd/system/portfolio-web.service <<'SERVICE'
+[Unit]
+Description=AWS portfolio demonstration web application
+After=network.target
+
+[Service]
+Type=simple
+User=nobody
+Group=nobody
+WorkingDirectory=/opt/portfolio
+ExecStart=/usr/bin/python3 /opt/portfolio/app.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+systemctl daemon-reload
+systemctl enable --now portfolio-web.service
