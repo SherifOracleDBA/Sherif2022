@@ -195,11 +195,11 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
-    description     = "Forward HTTP to application instances"
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups = [aws_security_group.app.id]
+    description = "Allow VPC outbound; application ingress is restricted to this ALB security group."
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
   }
 
   tags = {
