@@ -342,7 +342,7 @@ resource "aws_network_acl" "db_private" {
 }
 resource "aws_security_group" "alb" {
   name        = "${local.name}-alb-sg"
-  description = "Allow only CloudFront origin-facing traffic to the ALB."
+  description = "Allow CloudFront origin traffic and public health checks protected by AWS WAF."
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -706,7 +706,7 @@ resource "aws_iam_role_policy" "app_db_secret" {
 }
 resource "aws_wafv2_web_acl" "alb" {
   name        = "${local.name}-web-acl"
-  description = "Protect the ALB origin; accept requests only from the configured CloudFront origin header."
+  description = "Protect ALB application routes with a CloudFront origin header; allow only /health without the header."
   scope       = "REGIONAL"
 
   default_action {
@@ -892,7 +892,7 @@ resource "aws_cloudfront_distribution" "app" {
     minimum_protocol_version       = var.domain_name == "" ? null : "TLSv1.2_2021"
   }
 
-  depends_on = [aws_wafv2_web_acl_association.alb]
+  depends_on = [aws_wafv2_web_acl_association.alb, aws_lb_listener.http, aws_lb_listener.https]
 
   tags = {
     Name = "${local.name}-cloudfront"
