@@ -1,16 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-dnf install -y python3
+dnf install -y python3 python3-pip
 install -d -m 0755 /opt/portfolio
 
-cat > /opt/portfolio/app.py <<'PYTHON_APP_BASE64'
-${app_code_base64}
-PYTHON_APP_BASE64
+printf '%s' "${app_code_base64}" | base64 --decode > /opt/portfolio/app.py
+printf '%s' "${requirements_base64}" | base64 --decode > /opt/portfolio/requirements.txt
+chmod 0644 /opt/portfolio/app.py /opt/portfolio/requirements.txt
 
-base64 -d /opt/portfolio/app.py.tmp 2>/dev/null || true
-printf '%s' "${app_code_base64}" | base64 -d > /opt/portfolio/app.py
-chmod 0644 /opt/portfolio/app.py
+python3 -m venv /opt/portfolio/venv
+/opt/portfolio/venv/bin/pip install --no-cache-dir -r /opt/portfolio/requirements.txt
 
 cat > /etc/systemd/system/portfolio-web.service <<'SERVICE'
 [Unit]
@@ -22,7 +21,11 @@ Type=simple
 User=nobody
 Group=nobody
 WorkingDirectory=/opt/portfolio
-ExecStart=/usr/bin/python3 /opt/portfolio/app.py
+Environment="DB_SECRET_ARN=${db_secret_arn}"
+Environment="AWS_DEFAULT_REGION=${aws_region}"
+Environment="APP_HOST=0.0.0.0"
+Environment="APP_PORT=8080"
+ExecStart=/opt/portfolio/venv/bin/python /opt/portfolio/app.py
 Restart=always
 RestartSec=5
 NoNewPrivileges=true
