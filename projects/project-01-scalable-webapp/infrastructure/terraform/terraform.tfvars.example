@@ -6,18 +6,25 @@ instance_type    = "t3.micro"
 min_size         = 2
 desired_capacity = 2
 max_size         = 4
+nat_gateway_per_az = true
+app_db_username    = "portfolio_app"
 
 # Set true to test RDS Multi-AZ failover. This increases AWS charges.
-db_multi_az = false
+db_multi_az = true
 
 # Generate a unique random value of at least 32 characters.
 # Do not use this example value in a real deployment.
 origin_verify_header = "replace-with-a-random-value-of-at-least-32-characters"
 
-# Optional custom domain. Leave all three empty to use the CloudFront hostname.
-domain_name                 = ""
-hosted_zone_id              = ""
-cloudfront_certificate_arn  = ""
+# Optional CloudFront custom hostname. CloudFront ACM certificates must be in us-east-1.
+domain_name                = ""
+hosted_zone_id             = ""
+cloudfront_certificate_arn = ""
+
+# Optional ALB alias for the Route 53 assessment health-check exercise.
+# alb_domain_name must be in the hosted zone above. The health check itself is created even if this is empty.
+alb_domain_name      = ""
+alb_certificate_arn  = ""
 
 # Optional. SNS sends a confirmation email when configured.
 alarm_email = ""
