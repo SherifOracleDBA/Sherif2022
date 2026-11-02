@@ -65,9 +65,38 @@ variable "db_username" {
 }
 
 variable "db_multi_az" {
-  description = "Enable RDS Multi-AZ. Set true to run the HA exercise; it increases cost."
+  description = "Enable RDS Multi-AZ for the assessment high-availability design."
   type        = bool
-  default     = false
+  default     = true
+}
+
+variable "nat_gateway_per_az" {
+  description = "Create one NAT Gateway per Availability Zone for resilient private-subnet egress."
+  type        = bool
+  default     = true
+}
+
+variable "app_db_username" {
+  description = "Least-privilege PostgreSQL application account; bootstrapped separately from the RDS master account."
+  type        = string
+  default     = "portfolio_app"
+}
+
+variable "alb_domain_name" {
+  description = "Optional Route 53 hostname aliasing directly to the ALB for the assessment health-check exercise."
+  type        = string
+  default     = ""
+}
+
+variable "alb_certificate_arn" {
+  description = "Optional ACM certificate ARN in the ALB Region for HTTPS from CloudFront to the ALB. Requires alb_domain_name."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.alb_certificate_arn == "" || var.alb_domain_name != ""
+    error_message = "alb_domain_name must be set when alb_certificate_arn is configured."
+  }
 }
 
 variable "origin_verify_header" {
@@ -88,7 +117,7 @@ variable "domain_name" {
 }
 
 variable "hosted_zone_id" {
-  description = "Route 53 hosted zone ID. Required when domain_name is set."
+  description = "Route 53 public hosted zone ID. Required for configured CloudFront or ALB aliases."
   type        = string
   default     = ""
 }
