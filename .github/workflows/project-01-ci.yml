@@ -47,6 +47,9 @@ jobs:
         with:
           terraform_version: "1.10.5"
 
+      - name: Show formatter diff
+        run: terraform fmt -diff -recursive
+
       - name: Check formatting
         run: terraform fmt -check -recursive
 
