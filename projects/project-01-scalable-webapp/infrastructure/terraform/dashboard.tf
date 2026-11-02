@@ -4,11 +4,11 @@ resource "aws_cloudwatch_dashboard" "app" {
   dashboard_body = jsonencode({
     widgets = [
       {
-        type   = "metric"
-        x      = 0
-        y      = 0
-        width  = 12
-        height = 6
+        type       = "metric"
+        x          = 0
+        y          = 0
+        width      = 12
+        height     = 6
         properties = {
           title   = "EC2 Auto Scaling average CPU"
           view    = "timeSeries"
@@ -20,11 +20,11 @@ resource "aws_cloudwatch_dashboard" "app" {
         }
       },
       {
-        type   = "metric"
-        x      = 12
-        y      = 0
-        width  = 12
-        height = 6
+        type       = "metric"
+        x          = 12
+        y          = 0
+        width      = 12
+        height     = 6
         properties = {
           title   = "ALB target response time"
           view    = "timeSeries"
@@ -36,11 +36,11 @@ resource "aws_cloudwatch_dashboard" "app" {
         }
       },
       {
-        type   = "metric"
-        x      = 0
-        y      = 6
-        width  = 12
-        height = 6
+        type       = "metric"
+        x          = 0
+        y          = 6
+        width      = 12
+        height     = 6
         properties = {
           title   = "ALB request count"
           view    = "timeSeries"
@@ -52,11 +52,11 @@ resource "aws_cloudwatch_dashboard" "app" {
         }
       },
       {
-        type   = "metric"
-        x      = 12
-        y      = 6
-        width  = 12
-        height = 6
+        type       = "metric"
+        x          = 12
+        y          = 6
+        width      = 12
+        height     = 6
         properties = {
           title   = "Unhealthy application targets"
           view    = "timeSeries"
