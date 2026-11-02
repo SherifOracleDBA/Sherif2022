@@ -1,0 +1,57 @@
+name: Project 01 CI
+
+on:
+  push:
+    paths:
+      - "projects/project-01-scalable-webapp/**"
+      - ".github/workflows/project-01-ci.yml"
+  pull_request:
+    paths:
+      - "projects/project-01-scalable-webapp/**"
+      - ".github/workflows/project-01-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-tests:
+    name: Python unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run unit tests
+        run: python -m unittest discover -s projects/project-01-scalable-webapp/tests -p "test_*.py" -v
+        env:
+          PYTHONPATH: .
+
+  terraform:
+    name: Terraform format and validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/project-01-scalable-webapp/infrastructure/terraform
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+
+      - name: Initialize providers (no backend)
+        run: terraform init -backend=false
+
+      - name: Validate configuration
+        run: terraform validate
