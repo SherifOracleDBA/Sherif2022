@@ -612,7 +612,7 @@ resource "aws_autoscaling_policy" "cpu_step_scale_out" {
 
   step_adjustment {
     metric_interval_lower_bound = 0
-    scaling_adjustment           = 1
+    scaling_adjustment          = 1
   }
 }
 
