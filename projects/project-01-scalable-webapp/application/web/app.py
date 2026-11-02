@@ -13,12 +13,21 @@ def route_response(path: str) -> tuple[int, str, str]:
     if path == "/":
         body = (
             "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
-            "<title>AWS Scalable Web App</title></head><body>"
-            "<h1>AWS Scalable Web Application</h1>"
-            "<p>Served by an EC2 instance in a private subnet.</p>"
+            "<title>AWS Scalable Web App</title>"
+            "<link rel='stylesheet' href='/static/style.css'></head><body>"
+            "<main><h1>AWS Scalable Web Application</h1>"
+            "<p>Served by an EC2 instance in a private subnet.</p></main>"
             "</body></html>"
         )
         return 200, body, "text/html; charset=utf-8"
+    if path == "/static/style.css":
+        return (
+            200,
+            "body{font-family:system-ui,sans-serif;margin:3rem;background:#f5f7fb}"
+            "main{max-width:48rem;margin:auto;padding:2rem;background:white;"
+            "border-radius:1rem}h1{color:#172b4d}",
+            "text/css; charset=utf-8",
+        )
     return 404, json.dumps({"error": "not_found"}), "application/json"
 
 
@@ -33,12 +42,13 @@ class PortfolioRequestHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
-        self.send_header("Cache-Control", "no-store" if path != "/static" else "public, max-age=300")
+        cache_control = "public, max-age=86400" if path.startswith("/static/") else "no-store"
+        self.send_header("Cache-Control", cache_control)
         self.end_headers()
         self.wfile.write(payload)
 
     def log_message(self, fmt: str, *args: object) -> None:
-        # Keep logs useful but avoid writing headers or credentials.
+        # Avoid logging headers, tokens, or request bodies.
         super().log_message(fmt, *args)
 
 
