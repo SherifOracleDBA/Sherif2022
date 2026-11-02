@@ -1,124 +1,217 @@
 # Project 01 — Scalable Web Application with ALB and Auto Scaling
 
-**Architecture:** EC2-based, multi-AZ, three-tier application  
-**Goal:** Deploy a web application with compute only in private subnets and traffic distributed across two Availability Zones.
+**Architecture:** EC2-based, multi-AZ application with private compute  
+**Implementation:** Terraform + Python standard-library web app  
+**Current stage:** Starter infrastructure and app code committed; validation and AWS deployment still required.
 
-## Target architecture
+## Architecture
 
 ~~~mermaid
 flowchart TD
-    U[Users] --> R53[Route 53]
-    R53 --> CF[CloudFront]
-    CF --> WAF[AWS WAF]
+    U[Users] --> R53[Optional Route 53 alias]
+    R53 --> CF[CloudFront HTTPS]
+    CF --> WAF[AWS WAF on regional ALB]
     WAF --> ALB[Public ALB]
-    ALB --> EC2A[EC2 App - Private AZ A]
-    ALB --> EC2B[EC2 App - Private AZ B]
-    EC2A --> DB[(RDS Multi-AZ)]
-    EC2B --> DB
-    EC2A --> CW[CloudWatch]
-    EC2B --> CW
-    SSM[Systems Manager] -. secure administration .-> EC2A
-    SSM -. secure administration .-> EC2B
+    ALB --> EC2A[EC2 / ASG - private AZ A]
+    ALB --> EC2B[EC2 / ASG - private AZ B]
+    EC2A --> RDS[(Private RDS PostgreSQL)]
+    EC2B --> RDS
+    EC2A --> SSM[Systems Manager]
+    EC2B --> SSM
+    ASG[Auto Scaling] --> CW[CloudWatch dashboard and alarms]
+    CW --> SNS[SNS notifications]
 ~~~
 
-**Design clarification:** The baseline ALB is internet-facing in public subnets; EC2 instances and RDS are private. CloudFront is the public distribution and the ALB is its origin. Protect the origin with a custom origin header and WAF controls, and restrict the ALB security group to CloudFront origin-facing traffic where applicable. Do not put EC2 instances in public subnets to make the ALB work.
+The ALB security group accepts traffic only from the AWS-managed CloudFront origin-facing prefix list. CloudFront adds a secret origin header, and AWS WAF blocks requests that do not contain the configured value. The managed common rule group starts in **count mode** so you can review false positives; a rate-based rule blocks excessive requests.
 
-## Implementation layout
+## Repository layout
 
 ~~~text
-infrastructure/terraform/
-  modules/vpc/
-  modules/alb/
-  modules/asg/
-  modules/rds/
-  envs/dev/
-application/web/
-tests/smoke/
-scripts/
-docs/
+project-01-scalable-webapp/
+├── README.md
+├── application/web/app.py
+├── infrastructure/terraform/
+│   ├── versions.tf
+│   ├── variables.tf
+│   ├── main.tf
+│   ├── dashboard.tf
+│   ├── outputs.tf
+│   ├── user_data.sh.tftpl
+│   └── terraform.tfvars.example
+└── tests/
+    ├── test_app.py
+    └── smoke_test.py
 ~~~
 
-## Phase 1 — Plan and prepare
+## What the initial Terraform stack creates
 
-1. Select one Region and two Availability Zones.
-2. Allocate a non-overlapping VPC CIDR, for example 10.20.0.0/16.
-3. Plan two public subnets for ALB/NAT, two private application subnets, and private database subnets.
-4. Choose MySQL or PostgreSQL.
-5. Install AWS CLI v2 and Terraform. Configure a named profile with short-lived credentials.
-6. Set a budget alert before deploying NAT, ALB, or RDS.
+- VPC with two public, two private application, and two private database subnets across two AZs.
+- Internet Gateway and one NAT Gateway for the learning environment.
+- Security groups that restrict ALB → application → database traffic.
+- Public ALB, target group, and health check on `/health`.
+- EC2 launch template, encrypted EBS volume, IMDSv2 requirement, IAM instance profile, and Systems Manager access.
+- EC2 Auto Scaling group across two private AZs with CPU target tracking.
+- Private PostgreSQL RDS instance with encryption, backups, and an RDS-managed master password stored in Secrets Manager.
+- Regional AWS WAF on the ALB with origin-header validation, managed common rules in count mode, and rate limiting.
+- CloudFront distribution with HTTPS for viewers, disabled caching for dynamic responses, and managed caching for `/static/*`.
+- Optional Route 53 alias record for a custom domain.
+- CloudWatch dashboard, CPU/unhealthy-target alarms, and SNS topic with optional email subscription.
 
-## Phase 2 — Build the network
+## Important starter limitations
 
-1. Create the VPC and enable DNS support and DNS hostnames.
-2. Create public, private application, and private database subnets across two AZs.
-3. Attach an Internet Gateway.
-4. Add public routes to the Internet Gateway.
-5. Add private application outbound routes through NAT. A NAT Gateway per AZ is more resilient; a single NAT is a lower-cost lab trade-off.
-6. Create security groups: ALB accepts HTTPS; application accepts only from ALB; database accepts only its port from the application security group.
-7. Add NACL rules only when needed; use security groups as the primary stateful control.
+This is a learning baseline, **not yet a production-ready deployment**:
 
-**Checkpoint:** Private instances have no public IP and the database has no direct internet route.
+1. NAT is deployed in one AZ to reduce lab cost. A resilient design should use one NAT Gateway per AZ or suitable VPC endpoints and routing.
+2. The RDS instance is created and its master credential is managed by RDS/Secrets Manager, but the demo web application does not yet connect to the database. Add a separate least-privilege application DB user and schema migration before app-level database testing. Do not give the app the RDS master password.
+3. CloudFront viewer traffic is HTTPS, but the initial CloudFront-to-ALB origin connection uses HTTP. For production, add an ALB HTTPS listener with a valid origin certificate and change CloudFront to HTTPS-only origin communication.
+4. RDS Multi-AZ defaults to false to keep initial lab costs lower. Set `db_multi_az = true` for the HA exercise.
+5. A custom hostname requires a Route 53 hosted zone and an ACM certificate in **us-east-1** for CloudFront.
+6. CloudFront, ALB, NAT Gateway, RDS, and data transfer incur costs. Destroy the lab when finished.
 
-## Phase 3 — Deploy compute
+## Prerequisites
 
-1. Build a small web application with a /health endpoint.
-2. Create an EC2 launch template using a supported Amazon Linux image.
-3. Attach an instance profile with least-privilege permissions and Systems Manager access.
-4. Use user data to install and start the app. Do not embed credentials in user data.
-5. Create an Auto Scaling group across both private application subnets.
-6. Start with two instances for the two-AZ exercise.
-7. Add target tracking based on CPU or ALB requests per target.
+- AWS CLI v2, Terraform 1.9+, Git, and Python 3.12+.
+- An AWS account with billing alerts enabled.
+- A named AWS CLI profile using IAM Identity Center/SSO or another short-lived credential source.
+- Permission to create VPC, EC2, Auto Scaling, ELB, RDS, IAM, WAF, CloudFront, Route 53 (optional), CloudWatch, and SNS resources.
 
-**Checkpoint:** Access an instance with Systems Manager Session Manager without opening SSH.
+Check the AWS Provider release and pin range in `versions.tf`; this project currently uses the 6.71 provider line.
 
-## Phase 4 — Add ALB, WAF, and CloudFront
+## Step 1 — Configure AWS credentials
 
-1. Create an ALB in public subnets and a target group with the application's health check path.
-2. Add an HTTPS listener using an ACM certificate; redirect HTTP to HTTPS.
-3. Attach the Auto Scaling group to the target group.
-4. Create CloudFront with the ALB as origin.
-5. Cache static assets; do not cache dynamic application responses unless demonstrably safe.
-6. Protect the origin with a custom header and security-group/WAF restrictions.
-7. Create a Route 53 alias record to CloudFront.
+Example with IAM Identity Center:
 
-**Checkpoint:** Verify healthy targets, HTTPS, static cache behavior, and origin protection.
+~~~bash
+aws configure sso --profile aws-lab
+aws sso login --profile aws-lab
+aws sts get-caller-identity --profile aws-lab
+~~~
 
-## Phase 5 — Database
+Use the profile in subsequent commands:
 
-1. Create an RDS DB subnet group in private database subnets.
-2. Enable Multi-AZ for the HA exercise.
-3. Store credentials in Secrets Manager.
-4. Give the application role permission to retrieve only its required secret.
-5. Configure the app to read connection details securely.
-6. Create a least-privilege database user and schema.
-7. Test read/write operations and confirm RDS is not publicly accessible.
+~~~bash
+export AWS_PROFILE=aws-lab
+export AWS_REGION=us-east-1
+~~~
 
-## Phase 6 — Monitoring, scaling, and protection
+Do not create or commit access keys for this project.
 
-1. Associate AWS WAF with CloudFront or the selected protected entry point.
-2. Start managed rules in count mode; inspect false positives before blocking.
-3. Add rate-based protection.
-4. Create CloudWatch dashboards for ALB requests/latency/healthy hosts, EC2 CPU, ASG capacity, and RDS metrics.
-5. Add alarms and SNS notifications.
-6. Generate controlled load and observe scale-out and scale-in.
+## Step 2 — Configure Terraform
 
-## Phase 7 — Validate
+~~~bash
+cd projects/project-01-scalable-webapp/infrastructure/terraform
+cp terraform.tfvars.example terraform.tfvars
+~~~
 
-- Two healthy targets across two AZs.
-- Application remains available after terminating one test instance.
-- ASG launches a replacement.
-- ALB stops routing to an unhealthy target.
-- RDS accepts traffic only from the application tier.
-- SSM works without public SSH.
-- WAF blocks a controlled test request after rules are enabled.
-- CloudWatch alarm delivers an SNS notification.
+Generate a unique origin-header value:
 
-Record expected result, actual result, and sanitized evidence in docs/test-results/.
+~~~bash
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+~~~
 
-## Cleanup
+Paste the generated value into the local `terraform.tfvars` file as `origin_verify_header`. Do not commit that file. The root `.gitignore` excludes `*.tfvars`.
 
-Delete CloudFront and wait for distribution removal; delete Route 53 records and WAF associations; remove ASG, launch template, ALB, and target groups; delete RDS when snapshots are no longer needed; delete NAT Gateways and Elastic IPs; then remove subnets, route tables, security groups, and VPC. Verify billing after cleanup.
+For the optional custom hostname, fill in all three values:
+- `domain_name`: hostname to publish.
+- `hosted_zone_id`: existing Route 53 public hosted zone ID.
+- `cloudfront_certificate_arn`: ACM certificate ARN from us-east-1 that covers the hostname.
+
+Keep the custom domain values empty to use the CloudFront-generated hostname.
+
+To enable the database HA exercise, set:
+
+~~~hcl
+db_multi_az = true
+~~~
+
+This will increase the hourly database cost.
+
+## Step 3 — Format, initialize, and review
+
+~~~bash
+terraform fmt -recursive
+terraform init
+terraform validate
+terraform plan -out=tfplan
+terraform show tfplan
+~~~
+
+Review the plan carefully. Check Region, subnet CIDRs, instance/database sizes, domain/certificate settings, and estimated cost before applying.
+
+## Step 4 — Deploy
+
+~~~bash
+terraform apply tfplan
+terraform output
+~~~
+
+The `application_url` output is the CloudFront URL (or configured custom hostname). CloudFront creation and propagation can take time. The SNS email subscription, when configured, requires confirmation from the recipient.
+
+## Step 5 — Validate the app and infrastructure
+
+From the repository root, run the unit tests:
+
+~~~bash
+python -m unittest discover -s projects/project-01-scalable-webapp/tests -p "test_*.py" -v
+~~~
+
+Run the deployed smoke test using the Terraform `application_url` output:
+
+~~~bash
+python projects/project-01-scalable-webapp/tests/smoke_test.py --url https://YOUR_CLOUDFRONT_DOMAIN
+~~~
+
+Also verify in the AWS Console/CLI:
+- ALB target group reports two healthy instances in separate AZs.
+- EC2 instances have no public IPs and are in private application subnets.
+- Session Manager can connect without SSH.
+- RDS is not publicly accessible and its security group allows only the application security group.
+- WAF blocks requests without the origin header; inspect managed-rule count metrics before switching the managed group to block mode.
+- `/static/style.css` is cacheable; `/health` and the dynamic home page are not cached.
+- CloudWatch dashboard and alarms exist; SNS email is confirmed when used.
+- Terminating one test instance results in ASG replacement.
+
+## Step 6 — Enable managed-rule blocking only after review
+
+After checking WAF sampled requests and metrics for false positives, change the managed common rule group's override action from:
+
+~~~hcl
+override_action {
+  count {}
+}
+~~~
+
+to:
+
+~~~hcl
+override_action {
+  none {}
+}
+~~~
+
+Then run `terraform plan` and apply the reviewed change.
+
+## Step 7 — Destroy the lab
+
+~~~bash
+terraform destroy
+~~~
+
+Confirm that the CloudFront distribution, ALB, NAT Gateway/EIP, RDS instance, subnets, and VPC are removed. Review snapshots, CloudWatch logs, and other retained resources separately. Do not remove snapshots needed for recovery or evidence.
+
+## CI and tests
+
+The workflow at `.github/workflows/project-01-ci.yml` runs Python unit tests and Terraform formatting/validation on relevant pushes and pull requests. A green GitHub Actions run is required before marking code validation complete. The smoke test requires a deployed URL and is run separately.
 
 ## Definition of done
 
-Infrastructure is reproducible from code; the app is reachable through the intended hostname; multi-AZ behavior and scaling are demonstrated; security/monitoring checks pass; and teardown is documented.
+- [ ] Terraform format and validation pass in CI.
+- [ ] Python unit tests pass in CI.
+- [ ] Infrastructure deploys from a clean checkout.
+- [ ] Two targets are healthy across AZs.
+- [ ] Instance replacement and target-tracking behavior are demonstrated.
+- [ ] WAF origin protection and managed rules are reviewed.
+- [ ] SSM access works without SSH.
+- [ ] Database connectivity is tested with a least-privilege app user (not the master account).
+- [ ] Origin TLS is enabled before any production use.
+- [ ] Smoke tests and teardown are recorded.
