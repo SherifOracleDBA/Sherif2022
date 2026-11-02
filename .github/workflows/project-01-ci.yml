@@ -27,6 +27,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install application dependencies
+        run: python -m pip install -r projects/project-01-scalable-webapp/application/requirements.txt
+
       - name: Run unit tests
         run: python -m unittest discover -s projects/project-01-scalable-webapp/tests -p "test_*.py" -v
         env:
