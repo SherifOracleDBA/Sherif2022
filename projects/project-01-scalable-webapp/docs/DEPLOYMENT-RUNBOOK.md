@@ -64,7 +64,7 @@ Follow the complete SSM remote-host port-forward and database bootstrap instruct
 ## 6. Run smoke tests
 ```bash
 APP_URL=$(terraform output -raw application_url)
-cd ../../../../..
+cd ../../../..
 python -m pip install -r projects/project-01-scalable-webapp/application/requirements.txt
 PYTHONPATH=projects/project-01-scalable-webapp/application \
   python -m unittest discover -s projects/project-01-scalable-webapp/tests -p "test_*.py" -v
