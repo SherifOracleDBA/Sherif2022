@@ -15,8 +15,8 @@ Status is evidence-based: infrastructure code and automated tests are marked com
 ## Latest Project 01 CI evidence
 
 - Workflow: [Project 01 CI](https://github.com/SherifOracleDBA/Sherif2022/actions/workflows/project-01-ci.yml)
-- Latest successful run: [Run #36 — 41492830520](https://github.com/SherifOracleDBA/Sherif2022/actions/runs/41492830520).
-- Commit checked: `05ea345fe51a5ea5e510fabd2f356baf5da3c189` on `main`.
+- Latest successful run: [Run #45 — 42809046273](https://github.com/SherifOracleDBA/Sherif2022/actions/runs/42809046273).
+- Commit checked: `8055f5a26f8d8a078e6b79820a44fa4cf79eb0ca` on `graduation/project-01-submission`.
 - Python unit tests: passed (8 tests).
 - Terraform format check: passed.
 - Terraform init with no backend: passed.
