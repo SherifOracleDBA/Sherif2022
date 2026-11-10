@@ -49,7 +49,7 @@ project-xx/
 
 README.md documents the architecture and steps; docs holds diagrams, runbooks, evidence; infrastructure holds Terraform/CDK/CloudFormation; application contains the workload; tests contains unit, integration, and smoke tests; scripts contains repeatable deploy, validate, and destroy helpers.
 
-## Recommended build order
+## Project 01 graduation submission\n\nProject 01 includes an editable [draw.io architecture diagram](projects/project-01-scalable-webapp/architecture/solution-architecture.drawio), a [deployment runbook](projects/project-01-scalable-webapp/docs/DEPLOYMENT-RUNBOOK.md), a [validation matrix](projects/project-01-scalable-webapp/docs/VALIDATION-MATRIX.md), and an [assessment evidence register](projects/project-01-scalable-webapp/docs/ASSESSMENT-EVIDENCE.md). Its live AWS deployment is still pending; see [Project Delivery Status](docs/PROJECT-STATUS.md).\n\n## Recommended build order
 
 1. Complete Project 01 first to establish networking, IAM, compute, load balancing, monitoring, and deployment skills.
 2. Build Projects 02 and 03 for asynchronous serverless workflows and authenticated APIs.
