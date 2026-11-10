@@ -279,3 +279,28 @@ GitHub Actions at `.github/workflows/project-01-ci.yml` installs the application
 - [ ] Teardown and post-destroy cost review are recorded.
 
 **Do not claim production readiness or successful live HA until the AWS deployment and corresponding test evidence exist.**
+
+
+## 16. Graduation submission pack
+
+The project now includes an editable architecture source and a structured evidence pack:
+
+- **Solution Architecture Diagram:** [Editable draw.io diagram](architecture/solution-architecture.drawio), [Mermaid source](architecture/solution-architecture.mmd), and [architecture notes](architecture/README.md).
+- **GitHub documentation:** this README documents the solution, AWS services, deployment, security, validation, and cleanup.
+- **Deployment procedure:** [Deployment Runbook](docs/DEPLOYMENT-RUNBOOK.md).
+- **Assessment test cases:** [Validation and Acceptance Matrix](docs/VALIDATION-MATRIX.md).
+- **Evidence tracking:** [Assessment Evidence Register](docs/ASSESSMENT-EVIDENCE.md).
+- **Cost and teardown:** [Cost and Cleanup Controls](docs/COST-AND-CLEANUP.md).
+
+### Current submission status
+
+| Deliverable | Status |
+|---|---|
+| Architecture diagram source | Committed; export PNG/SVG for final upload |
+| README and technical documentation | Committed; update with actual deployment outputs after testing |
+| Terraform and application code | Committed; CI validation previously passed |
+| Live AWS deployment | Not yet performed |
+| Runtime acceptance evidence | Not yet collected |
+| Optional live URL / demo recording | Pending successful deployment |
+
+The architecture and documentation describe the intended solution. They must not be presented as proof of live AWS deployment. Complete the evidence register only after each test has actually passed.
