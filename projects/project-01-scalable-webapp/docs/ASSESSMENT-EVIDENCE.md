@@ -8,7 +8,7 @@ This is the evidence index for the graduation submission. Keep screenshots and s
 |---|---|---|---|---|---|
 | ARCH-01 | Solution architecture diagram | READY - source committed | [draw.io source](../architecture/solution-architecture.drawio) | 2026-11-10 | Editable diagram; architecture also appears in project README |
 | DOC-01 | Project documentation / README | READY - draft | [Project README](../README.md) | 2026-11-10 | Review after live deployment for actual outputs |
-| CI-01 | GitHub Actions / Terraform validation | PASS - historical run | [Workflow run #36](https://github.com/SherifOracleDBA/Sherif2022/actions/runs/41492830520) | 2026-11-02 | 8 unit tests and Terraform fmt/init/validate passed for commit 05ea345 |
+| CI-01 | GitHub Actions / Terraform validation | PASS - historical run | [Workflow run #45](https://github.com/SherifOracleDBA/Sherif2022/actions/runs/42809046273) | 2026-11-10 | 8 unit tests and Terraform fmt/init/validate passed for commit 8055f5a |
 | AWS-01 | Terraform deployment | NOT RUN | — | — | Requires learner AWS account and plan/cost approval |
 | APP-01 | ALB target health across AZs | NOT RUN | — | — | Capture target health output |
 | DB-01 | RDS Multi-AZ and application DB test | NOT RUN | — | — | Run DB bootstrap and smoke tests |
