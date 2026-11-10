@@ -1,0 +1,47 @@
+flowchart TB
+    U[Users / Browsers] --> R53[Route 53 - optional custom DNS]
+    R53 --> CF[CloudFront - HTTPS viewer]
+    CF --> WAF[AWS WAF - Regional Web ACL on ALB]
+    WAF --> ALB[Application Load Balancer - public subnets]
+    RHC[Route 53 HTTP health check] -.->|GET /health| ALB
+    subgraph VPC["VPC - two Availability Zones"]
+      direction TB
+      IGW[Internet Gateway]
+      subgraph AZA["Availability Zone A"]
+        PUBA[Public subnet A]
+        NATA[NAT Gateway A]
+        APPA[Private application subnet A]
+        ECA[EC2 instance - ASG]
+        DBA[Private database subnet A]
+      end
+      subgraph AZB["Availability Zone B"]
+        PUBB[Public subnet B]
+        NATB[NAT Gateway B]
+        APPB[Private application subnet B]
+        ECB[EC2 instance - ASG]
+        DBB[Private database subnet B]
+      end
+      ALB --> ECA
+      ALB --> ECB
+      ECA -->|PostgreSQL TLS 5432| RDS[(Amazon RDS PostgreSQL - Multi-AZ)]
+      ECB -->|PostgreSQL TLS 5432| RDS
+      ECA --> NATA
+      ECB --> NATB
+      IGW --- PUBA
+      IGW --- PUBB
+      NATA --- PUBA
+      NATB --- PUBB
+      ECA --- APPA
+      ECB --- APPB
+      RDS --- DBA
+      RDS --- DBB
+    end
+    ECA --> SM[Systems Manager]
+    ECB --> SM
+    ECA --> SEC[Secrets Manager - app DB secret]
+    ECB --> SEC
+    ECA --> CW[CloudWatch metrics / alarms / dashboard]
+    ECB --> CW
+    ASG[Auto Scaling - target tracking + step scaling] --> CW
+    CW --> SNS[SNS email notifications]
+    CF -.-> STATIC[Static assets /static/* cached]
